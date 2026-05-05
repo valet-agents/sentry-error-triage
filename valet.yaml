@@ -1,0 +1,103 @@
+name: sentry-error-triage
+display_name: Sentry Error Triage
+description: >-
+  An on-call engineer that opens your tickets for you. When a new
+  Sentry error fires, it pulls the trace, searches the web for
+  similar bugs, and posts a starting hypothesis to the on-call
+  Slack channel. @mention it to debug live.
+category: engineering
+
+story:
+  hero: "An on-call engineer that opens your tickets for you."
+  subheadline: >-
+    When a new Sentry error fires, it pulls the trace, searches
+    the web for similar bugs, and posts a starting hypothesis to
+    #oncall.
+  steps:
+    - role: trigger
+      title: "A Sentry error fires."
+      body: >-
+        New issue, regression, or alert — the webhook hits the
+        agent before anyone has opened their laptop.
+      catalog: sentry-webhook
+    - role: action
+      title: "It reads the trace and searches for known fixes."
+      body: >-
+        Pulls the full event, picks the top in-app frame, and
+        web-searches the error against GitHub issues, PRs, and
+        changelogs for the framework.
+      catalog: sentry-mcp
+    - role: outcome
+      title: "A hypothesis posted with sources, in Slack."
+      body: >-
+        Top frame, env+release, link to the Sentry issue, and up
+        to 3 candidate causes with source URLs — under 2,000
+        characters.
+      catalog: slack
+
+connectors:
+  - catalog: sentry-mcp
+    description: >-
+      The Sentry MCP server, authenticated via an internal
+      integration token. The agent reads issues, events, stack
+      traces, breadcrumbs, and release metadata. Comment and
+      resolve writes only happen when a Slack user explicitly
+      confirms.
+    slot_descriptions:
+      SENTRY_ACCESS_TOKEN: >-
+        Sentry internal integration token. Needs `event:read`,
+        `issue:read`, `issue:write` (for confirmed comment/resolve),
+        `project:read`, and `org:read` scopes.
+    ui:
+      headline: "Connect Sentry with an internal integration."
+      blurb: >-
+        Create an internal integration in Sentry, paste the token,
+        and the agent can read events and stack traces. The same
+        integration's webhook will fire the agent on new issues.
+      done_note: "Sentry connected"
+
+  - catalog: parallel-search-mcp
+    description: >-
+      Parallel's web search MCP. Keyless. The agent searches the
+      web for known fixes, prioritizing GitHub issues, GitHub
+      PRs, and library changelogs over generic results.
+    ui:
+      headline: "Web search, no key needed."
+      blurb: >-
+        Parallel handles the web lookup so the agent can ground
+        each hypothesis in a real GitHub issue or changelog entry
+        — no API key to manage.
+      done_note: "Web search ready"
+
+channels:
+  - catalog: slack
+    description: >-
+      The agent gets its own Slack bot. Invite it to your on-call
+      channel (or wherever you want hypotheses to land) and to
+      any channel where engineers should be able to @mention it
+      for ad-hoc Sentry questions.
+    ui:
+      headline: "Give Error Triage a Slack bot."
+      blurb: >-
+        The agent posts hypotheses to every channel you invite it
+        to. Most teams put it in #oncall — but the channel is
+        yours to choose, not hardcoded.
+      done_note: "Bot ready — invite it to your on-call channel"
+
+  - catalog: sentry-webhook
+    description: >-
+      Receives Sentry issue webhooks. After deploy, paste the
+      agent's webhook URL into the Sentry internal integration
+      so new issues and regressions fire the agent.
+    slot_descriptions:
+      SENTRY_CLIENT_SECRET: >-
+        Sentry internal integration client secret, used to verify
+        webhook signatures. Auto-managed by Valet but must mirror
+        the value in Sentry.
+    ui:
+      headline: "Wire up the Sentry webhook."
+      blurb: >-
+        After deploy, copy the webhook URL into the same Sentry
+        internal integration that issued your access token. New
+        issues and regressions will fire the agent automatically.
+      done_note: "Webhook ready — paste URL into Sentry"
