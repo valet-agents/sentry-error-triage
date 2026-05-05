@@ -7,6 +7,9 @@ description: >-
   Slack channel. @mention it to debug live.
 category: engineering
 
+example:
+  prompt: "What broke in production?"
+
 story:
   hero: "An on-call engineer that opens your tickets for you."
   subheadline: >-
